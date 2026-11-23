@@ -1,0 +1,83 @@
+# ---------- Maven / Java ----------
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+!.mvn/wrapper/maven-wrapper.jar
+.mvn/timing/
+.flattened-pom.xml
+dependency-reduced-pom.xml
+
+# ---------- IDE ----------
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+.settings/
+.classpath
+.project
+.factorypath
+.sts4-cache/
+.springBeans
+
+# ---------- Logs / temporary files ----------
+logs/
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ---------- Local environment / secrets ----------
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+
+# Local/prod configuration may contain real passwords or tokens.
+application-local.yml
+application-local.yaml
+application-local.properties
+application-prod.yml
+application-prod.yaml
+application-prod.properties
+application-secret.yml
+application-secret.yaml
+application-secret.properties
+
+# Current development file contains local credentials; keep it local until sanitized.
+src/main/resources/application-dev.yml
+
+# Private keys and certificate stores
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# ---------- Local databases / runtime data ----------
+dump.rdb
+*.rdb
+*.sqlite
+*.sqlite3
+*.db
+data/
+
+# ---------- Test / coverage output ----------
+out/
+coverage/
+surefire-reports/
+failsafe-reports/

@@ -1,0 +1,68 @@
+server:
+  port: 8080
+
+spring:
+  profiles:
+    active: dev
+  application:
+    name: tva-server
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DB:tva_startrail}?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: 0
+      timeout: 3s
+  mail:
+    # 注意：password 填的是邮箱服务商的 SMTP 授权码，不是邮箱登录密码；走环境变量，不进代码仓库
+    host: ${MAIL_HOST:smtp.qq.com}
+    port: ${MAIL_PORT:465}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+  jackson:
+    time-zone: Asia/Shanghai
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    banner: false
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+tva:
+  jwt:
+    # 开发环境默认值，生产必须通过环境变量 JWT_SECRET 覆盖（HS256 要求 >= 32 字节）
+    secret: ${JWT_SECRET:tva-startrail-dev-secret-key-please-override-in-production-0123456789}
+    access-ttl-seconds: 1800      # Access Token 30 分钟
+    refresh-ttl-seconds: 604800   # Refresh Token 7 天
+  mail:
+    from: ${MAIL_FROM:${MAIL_USERNAME:}}
+    from-name: TVA 人生星轨
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+  # 生产环境置 true 关闭文档页
+  production: false
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
