@@ -32,7 +32,7 @@ public class EventController {
 
     private final EventService eventService;
 
-    @Operation(summary = "创建事件（内嵌首个节点，同一事务）")
+    @Operation(summary = "创建事件（内嵌节点列表，至少一个，同一事务）")
     @PostMapping
     public Result<EventDetailVO> create(@RequestBody @Valid EventCreateDTO dto) {
         return Result.ok(eventService.create(dto));

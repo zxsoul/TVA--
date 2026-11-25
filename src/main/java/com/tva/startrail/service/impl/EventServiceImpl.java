@@ -3,6 +3,7 @@ package com.tva.startrail.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.extension.toolkit.Db;
 import com.tva.startrail.common.BizException;
 import com.tva.startrail.common.UserContext;
 import com.tva.startrail.constant.EventTypeConstant;
@@ -25,6 +26,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -41,7 +44,7 @@ public class EventServiceImpl extends ServiceImpl<EventsInfoMapper, EventsInfo> 
     private final TimelineNodeMapper timelineNodeMapper;
 
     /**
-     * ⑦ 创建事件：事件与首个节点同一事务写入，任一失败整体回滚
+     * ⑦ 创建事件：事件与全部初始节点同一事务写入，任一失败整体回滚
      * 多表写入，常规添加事务
      */
     @Override
@@ -56,13 +59,20 @@ public class EventServiceImpl extends ServiceImpl<EventsInfoMapper, EventsInfo> 
         event.setVisibility(VisibilityConstant.PRIVATE);
         save(event);
 
-        TimelineNode node = new TimelineNode();
-        node.setEventId(event.getId());
-        node.setHappenTime(dto.getFirstNode().getHappenTime());
-        node.setContent(dto.getFirstNode().getContent());
-        timelineNodeMapper.insert(node);
+        // 批量插入：JDBC batch 合并为一次往返，避免循环内单条 SQL 的 N+1 问题
+        List<TimelineNode> nodes = dto.getNodes().stream().map(item -> {
+            TimelineNode node = new TimelineNode();
+            node.setEventId(event.getId());
+            node.setHappenTime(item.getHappenTime());
+            node.setContent(item.getContent());
+            return node;
+        }).collect(Collectors.toCollection(ArrayList::new));
+        Db.saveBatch(nodes);
 
-        return buildDetailVO(event, List.of(node));
+        // 用户提交顺序不保证有序，返回前按 happen_time ASC, id ASC 排序，保证起止时间正确
+        nodes.sort(Comparator.comparing(TimelineNode::getHappenTime)
+                .thenComparing(TimelineNode::getId));
+        return buildDetailVO(event, nodes);
     }
 
     /**
@@ -205,4 +215,5 @@ public class EventServiceImpl extends ServiceImpl<EventsInfoMapper, EventsInfo> 
 两个逻辑方面可能存在差异的地方
 一个分页查询的时候，返回的是查询到的事件以及他们所包含的时间点，但是返回的数量确实计算事件的数量，容易算成时间点的总数量
 二是添加事件的时候，默认必须存在至少一个时间节点，并且只能存在一个节点
+（已解决：firstNode 升级为 nodes 列表，@NotEmpty 保证至少一个，同事务批量写入）
  */

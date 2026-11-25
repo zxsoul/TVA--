@@ -2,8 +2,7 @@
 
 对应文档：《TVA-人生星轨-PRD-V2.0》（V2.2 内容）、《TVA-技术设计文档-V1.0》。
 
-**本期范围**：环境搭建 + 三张表 DDL + 实体类/Mapper + 登录鉴权模块（注册 / 邮箱验证码 / 登录 / 刷新 / 登出 / 当前用户）。
-事件与时间节点模块本期**不实现**（实体与 Mapper 已就位，接口后续迭代）。
+**本期范围**：环境搭建 + 三张表 DDL + 实体类/Mapper + 登录鉴权模块（注册 / 邮箱验证码 / 登录 / 刷新 / 登出 / 当前用户）+ 事件与时间节点模块（事件 CRUD、节点 CRUD）。
 
 ## 技术栈
 
@@ -19,6 +18,7 @@ Java 17 · Spring Boot 3.2.5 · MyBatis-Plus 3.5.6 · MySQL 8 · Redis · JWT（
 - [x] **数据库基础**：用户、事件、时间节点三张表 DDL，以及对应 Entity / Mapper。
 - [x] **F1 用户系统后端（P0）**：邮箱验证码、注册、登录、双 Token 刷新、登出、当前用户信息。
 - [x] **基础安全能力**：BCrypt 密码哈希、接口鉴权、资源归属校验基础、Redis 黑名单与 Refresh Token 吊销。
+- [x] **F2 私人时间线后端（P0）**：事件创建（内嵌节点列表、同事务批量写入）、分页列表、详情、修改、逻辑删除（级联节点）；节点添加、有序查询、修改、删除；全链路资源归属校验。
 - [x] **单元测试（2026-11-24）**：登录模块业务分支、JWT、全局异常处理、接口参数校验、Redis key 契约，共 5 个测试类 55 个用例。
 
 ### 功能优先级与进度
@@ -26,7 +26,7 @@ Java 17 · Spring Boot 3.2.5 · MyBatis-Plus 3.5.6 · MySQL 8 · Redis · JWT（
 | PRD 模块 | 优先级 | 当前状态 | 已完成 / 待完成内容 |
 |---|---|---|---|
 | F1 用户系统 | P0 | **后端已完成** | 邮箱验证码注册、登录、刷新、登出、当前用户接口已完成 |
-| F2 私人时间线 | P0 | **进行中** | 已完成事件/节点表、Entity / Mapper；事件与节点 CRUD、事务及业务约束待实现 |
+| F2 私人时间线 | P0 | **后端已完成** | 事件与节点 CRUD、事务及归属校验已完成；同刻唯一（10001）、最后节点删除保护（10003）等业务约束待启用 |
 | F3 星轨长卷视图 | P0（本期范围） | **未开始** | 四主线渲染、规则曲线、横拖缩放、节点悬停与点击等前端能力待实现 |
 | F4 AI 拟合曲线 | P1 | **未开始** | 规则曲线兜底可随 F3 先行；AI 接口、结构化输出、超时降级待实现 |
 | F5 人生历程视频生成 | P1 | **未开始** | 本期不做，后续确定播放、录制或后端合成方案 |
@@ -39,10 +39,10 @@ Java 17 · Spring Boot 3.2.5 · MyBatis-Plus 3.5.6 · MySQL 8 · Redis · JWT（
 
 #### M1 · 完成私人时间线后端闭环（P0）
 
-- [ ] 事件创建（内嵌首个节点，同事务写入）、分页列表、详情、修改与逻辑删除。
-- [ ] 时间节点添加、有序查询、修改与逻辑删除。
+- [x] 事件创建（内嵌节点列表，至少一个，同事务批量写入）、分页列表、详情、修改与逻辑删除。
+- [x] 时间节点添加、有序查询、修改与逻辑删除。
 - [ ] 补齐同刻唯一、最后节点删除保护等业务约束及对应业务错误码。
-- [ ] 完成接口测试、鉴权与资源归属测试，并保持 Knife4j 文档同步。
+- [ ] 完成事件/节点模块接口测试，并保持 Knife4j 文档同步。
 
 #### M2 · 完成星轨长卷基础体验（P0 + 规则曲线兜底）
 
@@ -77,7 +77,7 @@ mvn test        # JDK 17
 | `com.tva.startrail.controller.AuthControllerTest` | 10 | MockMvc 接口参数校验（缺字段 / 邮箱格式 / 验证码 6 位）与各端点正常路径 |
 | `com.tva.startrail.util.RedisKeysTest` | 5 | 五类 Redis key 拼接契约 |
 
-共计 55 个用例（2026-11-24 全量通过）。未覆盖：`AuthInterceptor` 黑名单命中 / Redis 降级分支（待补充）。
+共计 55 个用例（2026-11-24 全量通过）。未覆盖：`AuthInterceptor` 黑名单命中 / Redis 降级分支、事件/节点模块（待补充）。
 
 ## 快速开始
 
@@ -114,6 +114,22 @@ mvn spring-boot:run
 | POST | /api/auth/logout | 登出（黑名单 + 吊销 Refresh Token） | 是 |
 | GET  | /api/auth/me | 当前用户信息 | 是 |
 
+## 已实现接口（/api/events、/api/nodes）
+
+| 方法 | 路径 | 说明 | 鉴权 |
+|---|---|---|---|
+| POST | /api/events | 创建事件（内嵌节点列表，至少 1 个、最多 50 个，同事务批量写入） | 是 |
+| GET  | /api/events | 我的事件分页列表（可按主线筛选，含节点数与起止时间聚合） | 是 |
+| GET  | /api/events/{id} | 事件详情（节点按 happen_time ASC, id ASC 全量返回） | 是 |
+| PUT  | /api/events/{id} | 修改事件（字段均选填） | 是 |
+| DELETE | /api/events/{id} | 逻辑删除事件，级联逻辑删除全部节点 | 是 |
+| POST | /api/events/{eventId}/nodes | 添加节点 | 是 |
+| GET  | /api/events/{eventId}/nodes | 节点列表（happen_time ASC, id ASC） | 是 |
+| PUT  | /api/nodes/{id} | 修改节点（字段均选填） | 是 |
+| DELETE | /api/nodes/{id} | 删除节点 | 是 |
+
+归属链：节点 → 所属事件 → 当前用户，越权访问一律 404（不暴露他人资源存在性）。
+
 鉴权方式：请求头 `Authorization: Bearer <accessToken>`；Access 30 分钟 / Refresh 7 天；
 登出黑名单与 Refresh jti 存 Redis，Redis 故障时黑名单检查降级跳过（30 分钟短有效期兜底）。
 
@@ -123,17 +139,16 @@ mvn spring-boot:run
 src/main/java/com/tva/startrail
 ├── common/      Result、BizException、全局异常处理、UserContext
 ├── config/      MyBatis-Plus（分页+字段填充）、AuthInterceptor、WebConfig、Async、Knife4j
-├── controller/  AuthController
-├── service/     AuthService、UserService、MailService（+ impl）
+├── controller/  AuthController、EventController、NodeController
+├── service/     AuthService、UserService、MailService、EventService、NodeService（+ impl）
 ├── mapper/      UserMapper、EventsInfoMapper、TimelineNodeMapper
 ├── entity/      BaseEntity、User、EventsInfo、TimelineNode
-├── dto/         RegisterDTO、EmailCodeDTO、LoginDTO、RefreshDTO
-├── vo/          UserVO、LoginVO、RefreshVO
+├── dto/         RegisterDTO、EmailCodeDTO、LoginDTO、RefreshDTO、EventCreateDTO（内嵌 NodeItemDTO 列表）、EventQueryDTO、EventUpdateDTO、NodeCreateDTO、NodeUpdateDTO
+├── vo/          UserVO、LoginVO、RefreshVO、EventDetailVO、EventListItemVO、NodeVO、NodeAggVO、PageVO
 └── util/        JwtUtil、RedisKeys
 ```
 
-## 后续迭代（契约已冻结，见技术文档第四章）
+## 后续迭代
 
-- 事件模块：POST/GET/PUT/DELETE `/api/events`（创建内嵌首个节点，同事务）
-- 节点模块：`/api/events/{eventId}/nodes`、`/api/nodes/{id}`（排序 `happen_time ASC, id ASC`）
 - 业务约束（同刻唯一 10001 / 节点数下限 10003 等）随 P1 迭代启用，接口契约不变
+- F3 星轨长卷前端、F4 AI 拟合曲线，见上方 Roadmap
