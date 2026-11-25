@@ -49,7 +49,7 @@ public class AuthServiceImpl implements AuthService {
     private final SecureRandom random = new SecureRandom();
 
     /**
-     * ② 发送邮箱验证码
+     * ② 发送邮箱验证码2
      * 流程：格式校验 → SET NX 占冷却位 → 生成 6 位验证码写 Redis → 异步发邮件
      */
     @Override
@@ -215,7 +215,10 @@ public class AuthServiceImpl implements AuthService {
 
     private UserVO toUserVO(User user) {
         UserVO vo = new UserVO();
-        BeanUtils.copyProperties(user, vo);
+        vo.setId(user.getId());
+        vo.setEmail(user.getEmail());
+        vo.setUsername(user.getUsername());
+        vo.setNickname(user.getNickname());
         return vo;
     }
 }
